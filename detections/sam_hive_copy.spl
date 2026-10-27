@@ -1,0 +1,16 @@
+``` Detects copying of the SAM, SYSTEM, or SECURITY registry hives (MITRE ATT&CK T1003.002).
+    Branch 1: process creation (Security 4688 or Sysmon 1) using esentutl or reg save against a hive.
+    Branch 2: a hive-named file created outside System32\config (Sysmon 11).
+    Wildcards avoid slash direction, since attackers often mix \ and / in paths. ```
+index=otrf
+    ( (EventID=4688 OR EventID=1)
+      (CommandLine="*esentutl*" OR CommandLine="*reg*save*")
+      (CommandLine="*config*SAM*" OR CommandLine="*config*SYSTEM*" OR CommandLine="*config*SECURITY*"
+       OR CommandLine="*HKLM*SAM*" OR CommandLine="*HKLM*SYSTEM*" OR CommandLine="*HKLM*SECURITY*") )
+    OR
+    ( EventID=11
+      (TargetFilename="*\\SAM" OR TargetFilename="*\\SYSTEM" OR TargetFilename="*\\SECURITY")
+      NOT TargetFilename="*System32*config*" )
+| eval Process=coalesce(Image, NewProcessName)
+| table _time Hostname EventID Process CommandLine TargetFilename
+| sort _time
