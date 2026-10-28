@@ -45,6 +45,17 @@ Run against the [OTRF Security Datasets](https://github.com/OTRF/Security-Datase
 - **What happened:** A user ran `esentutl.exe /y /vss` to copy the SAM registry hive, which stores local password hashes, out of a shadow copy to `C:\ProgramData\SAM`.
 - **Noise ruled out:** 188 Sysmon process access events where lsass.exe opened other processes with routine `0x1000` rights, 186 group enumeration events caused by Volume Shadow Copy, and log clearing that happened before the attack started.
 
+### Second test: LSASS memory dump
+
+Run against the OTRF `psh_lsass_memory_dump_comsvcs` capture (184 events), the skill produced [this report](examples/lsass-comsvcs-dump-report.md):
+
+- **Decision:** Escalate. **Severity:** Critical. **Confidence:** High.
+- **What happened:** PowerShell launched `rundll32.exe comsvcs.dll MiniDump` against lsass.exe, writing a full memory dump to the user's Temp folder (T1003.001).
+- **Noise ruled out:** dozens of routine process access, registry, and Explorer events, including a parent process opening its own child with full rights.
+- **Detection:** returns exactly the 5 attack events out of 184.
+
+On an earlier export that was missing the process creation events, the skill still predicted the hidden command line and its PowerShell parent correctly, and clearly labeled them as predictions rather than facts.
+
 ## What I learned
 
 Building this skill caught a mistake in my own earlier analysis. In my SIEM lab, I treated lsass.exe opening esentutl.exe as evidence of the attack, and I built an alert on Event ID 4663 for SAM file access. When I worked through the data with this triage process:
